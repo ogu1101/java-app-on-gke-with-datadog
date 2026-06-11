@@ -1,71 +1,108 @@
-# Datadog を使用したサンプルアプリケーション
+# Example Application with Datadog
 
-## 概要
+![Architecture](doc/architecture-gke.drawio.png)
 
-このリポジトリをクローンし、後述の `terraform` コマンドや `kubectl` コマンドなどを実行すると、以下アーキテクチャ図の Google Cloud リソースが作成され、Java アプリケーションコンテナおよび Datadog Agent コンテナを GKE にデプロイできます。
+## Table of Contents
 
-コマンドについては、[ビルドと実行（ Google Cloud ）](#ビルドと実行--google-cloud-)を参照してください。
+- [Overview](#overview)
+- [About the Application](#about-the-application)
+- [Enabled Datadog Features](#enabled-datadog-features)
+- [Build and Run (Google Cloud)](#build-and-run-google-cloud)
+  - [Prerequisites](#prerequisites-google-cloud)
+  - [Pre-work](#pre-work-google-cloud)
+  - [Edit terraform/terraform.tfvars](#edit-terraformterraformtfvars)
+  - [Enable Google Cloud APIs](#enable-google-cloud-apis)
+  - [Create Google Cloud Resources](#create-google-cloud-resources)
+  - [Update Commands and Files](#update-commands-and-files)
+  - [Build and Push the Application Container Image](#build-and-push-the-application-container-image)
+  - [Edit k8s/manifests.yaml](#edit-k8smanifestsyaml)
+  - [Deploy Kubernetes Resources](#deploy-kubernetes-resources)
+  - [Send an HTTP Request](#send-an-http-request-google-cloud)
+  - [Delete Kubernetes Resources](#delete-kubernetes-resources)
+  - [Delete Google Cloud Resources](#delete-google-cloud-resources)
+- [Build and Run (Local)](#build-and-run-local)
+  - [Prerequisites](#prerequisites-local)
+  - [Pre-work](#pre-work-local)
+  - [Start Containers](#start-containers)
+  - [Send an HTTP Request](#send-an-http-request-local)
+  - [Jenkins](#jenkins)
+  - [Stop Containers](#stop-containers)
+- [References](#references)
 
-![doc/architecture-gke.drawio.png](doc/architecture-gke.drawio.png)
+---
 
-また、後述の `docker compose` コマンドなどを実行すると、以下のコンテナをローカルで実行できます。
+## Overview
 
-コマンドについては、[ビルドと実行（ローカル）](#ビルドと実行--ローカル-)を参照してください。
+Clone this repository and run the `terraform` and `kubectl` commands described below to provision the Google Cloud resources shown in the architecture diagram above, then deploy the Java application container and Datadog Agent container to GKE.
 
-- Java アプリケーション（ Web サービス）コンテナ
-- Datadog Agent コンテナ
-- PostgreSQL コンテナ
-- Jenkins コンテナ
+For the full command sequence, see [Build and Run (Google Cloud)](#build-and-run-google-cloud).
 
-## アプリケーションについて
+You can also run the following containers locally using `docker compose`:
 
-- Web フレームワークとして、Spring Boot を使用しています。
-- HTTP リクエストの内容を PostgreSQL に登録します。
-- ログは、Datadog でパースされるように JSON 形式で出力するように設定しています。
-- `mvn test` コマンドを実行することで、単体テストを実行できます。
+- Java application (web service) container
+- Datadog Agent container
+- PostgreSQL container
+- Jenkins container
 
-## 有効化されている Datadog 機能
+For the full command sequence, see [Build and Run (Local)](#build-and-run-local).
 
-CI Visibility 以外は、手動作業なしに以下の Datadog 機能が有効化されます。
+---
 
-CI Visibility を有効化するには、手動で [Jenkins への Datadog プラグイン導入](https://docs.datadoghq.com/ja/continuous_integration/pipelines/jenkins/?tab=linux#datadog-jenkins-%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%92%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB)および Jenkins ジョブの作成を行う必要があります。
+## About the Application
 
-- Live Processes
-- Application Performance Monitoring
-- Continuous Profiler
-- Log Management（トレースと接続済み）
-- Application Security Management
-- CI Visibility（ローカルの場合のみ）
-- Database Monitoring（トレースと接続済み、ローカルの場合のみ）
-- Network Performance Monitoring（ Google Cloud の場合のみ）
-- Universal Service Monitoring（ Google Cloud の場合のみ）
+- Uses **Spring Boot** as the web framework.
+- Persists the contents of incoming HTTP requests to PostgreSQL.
+- Outputs logs in JSON format so they can be parsed by Datadog.
+- Unit tests can be run with `mvn test`.
 
-## ビルドと実行 （ Google Cloud ）
+---
 
-### 前提条件
+## Enabled Datadog Features
 
-- こちらの[ドキュメント](https://docs.docker.com/engine/install/)を参考に Docker をインストールしてください。
-- マルチプラットフォームコンテナイメージを作成するために、こちらの[ドキュメント](https://docs.docker.com/desktop/containerd/#turn-on-the-containerd-image-store-feature)を参考に Docker Desktop の `Use containerd for pulling and storing images` を有効化してください。
-- こちらの[ドキュメント](https://helm.sh/ja/)を参考に `Helm` をインストールしてください。
-- こちらの[ドキュメント](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)を参考に `Terraform` をインストールしてください。
-- こちらの[ドキュメント](https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl?hl=ja#install_plugin)を参考に `gke-gcloud-auth-plugin` をインストールしてください。
-- その他の前提条件については、こちらの[ドキュメント](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke?utm_medium=WEB_IO&in=terraform%2Fkubernetes&utm_content=DOCS&utm_source=WEBSITE&utm_offer=ARTICLE_PAGE#prerequisites)を参照してください。
+All features below are enabled automatically with no manual intervention, **except CI Visibility**.
 
-### 事前作業
+To enable CI Visibility, you must manually [install the Datadog plugin for Jenkins](https://docs.datadoghq.com/ja/continuous_integration/pipelines/jenkins/?tab=linux#datadog-jenkins-%E3%83%97%E3%83%A9%E3%82%B0%E3%82%A4%E3%83%B3%E3%82%92%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB) and create a Jenkins job.
 
-`.env` ファイルの `DD_API_KEY` に Datadog の API キーを設定してください。
+| Feature | Notes |
+|---|---|
+| Live Processes | |
+| Application Performance Monitoring | |
+| Continuous Profiler | |
+| Log Management | Connected to traces |
+| Application Security Management | |
+| CI Visibility | Local only |
+| Database Monitoring | Connected to traces; local only |
+| Network Performance Monitoring | Google Cloud only |
+| Universal Service Monitoring | Google Cloud only |
 
-### `terraform/terraform.tfvars` ファイルの変更
+---
 
-`terraform/terraform.tfvars` ファイルを以下のとおりに変更してください。
+## Build and Run (Google Cloud)
 
-- `project_id` に Google Could のプロジェクト ID を設定してください。
-- Google Cloud リソース名の重複を避けるために、`env` に任意の値を設定してください。
-- こちらの[サイト](https://www.cman.jp/network/support/go_access.cgi)でグローバル IP アドレスを確認し、`your_global_ip_address` にグローバル IP アドレスを設定してください。
+### Prerequisites (Google Cloud)
 
-### 各種 Google Cloud API の有効化
+- Install **Docker** by following the [official documentation](https://docs.docker.com/engine/install/).
+- To build multi-platform container images, enable **`Use containerd for pulling and storing images`** in Docker Desktop by following [this guide](https://docs.docker.com/desktop/containerd/#turn-on-the-containerd-image-store-feature).
+- Install **Helm** by following the [official documentation](https://helm.sh/).
+- Install **Terraform** by following the [official documentation](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli).
+- Install **`gke-gcloud-auth-plugin`** by following [this guide](https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-access-for-kubectl?hl=ja#install_plugin).
+- For all other prerequisites, refer to [this Terraform GKE tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke?utm_medium=WEB_IO&in=terraform%2Fkubernetes&utm_content=DOCS&utm_source=WEBSITE&utm_offer=ARTICLE_PAGE#prerequisites).
 
-任意のディレクトリで以下のコマンドを実行してください。
+### Pre-work (Google Cloud)
+
+Set your Datadog API key as the value of `DD_API_KEY` in the `.env` file.
+
+### Edit `terraform/terraform.tfvars`
+
+Update `terraform/terraform.tfvars` as follows:
+
+- Set `project_id` to your Google Cloud project ID.
+- Set `env` to an arbitrary value to avoid naming conflicts with existing Google Cloud resources.
+- Look up your global IP address (e.g., via [this site](https://www.cman.jp/network/support/go_access.cgi)) and set `your_global_ip_address` accordingly.
+
+### Enable Google Cloud APIs
+
+Run the following commands from any directory:
 
 ```bash
 gcloud services enable artifactregistry.googleapis.com
@@ -77,9 +114,9 @@ gcloud services enable container.googleapis.com
 gcloud services enable sqladmin.googleapis.com
 ```
 
-### Google Cloud リソースの作成
+### Create Google Cloud Resources
 
-`terraform` ディレクトリで以下のコマンドを実行してください。
+Run the following commands from the terraform directory:
 
 ```bash
 terraform init
@@ -87,19 +124,19 @@ terraform init
 terraform apply
 ```
 
-### コマンドとファイルの変更
+### Update Commands and Files
 
-後述のコマンドおよびファイルを以下のとおりに変更してください。
+Replace the placeholder variables in the commands and files below:
 
-- `${PROJECT_ID}` を `terraform/terraform.tfvars` ファイルに記載されている `project_id` の値に置き換えてください。
-- `${REGION}` を `terraform/terraform.tfvars` ファイルに記載されている `region` の値に置き換えてください。
-- `${ENV}` を `terraform/terraform.tfvars` ファイルに記載されている `env` の値に置き換えてください。
+- Replace ${PROJECT_ID} with the value of project_id in terraform/terraform.tfvars.
+- Replace ${REGION} with the value of region in terraform/terraform.tfvars.
+- Replace ${ENV} with the value of env in terraform/terraform.tfvars.
 
-コマンドの例については、`example-command.sh` を参照してください。
+For example commands with these values substituted, see example-command.sh.
 
-### アプリケーションコンテナイメージのビルドとプッシュ
+### Build and Push the Application Container Image
 
-`Dockerfile` が存在するディレクトリで以下のコマンドを実行してください。
+Run the following commands from the directory containing the Dockerfile:
 
 ```bash
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
@@ -109,21 +146,19 @@ docker buildx build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repositor
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on-gke-with-datadog:latest
 ```
 
-### `k8s/manifests.yaml` ファイルの変更
+### Edit k8s/manifests.yaml
 
-`k8s/manifests.yaml` ファイルを以下のとおりに変更してください。
+Update k8s/manifests.yaml as follows. Lines that require changes are marked with a # REPLACE ME comment.
 
-変更が必要な箇所には、`# REPLACE ME` というコメントが記載されています。
+- Replace `image: us-central1-docker.pkg.dev/tribal-iridium-308123/shuhei-repository/java-app-on-gke-with-datadog:latest` with `image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on-gke-with-datadog:latest`.
+- Replace - `tribal-iridium-308123:us-central1:shuhei-cloud-sql` with - `${PROJECT_ID}:${REGION}:${ENV}-cloud-sql`.
+- Replace `kubernetes.io/ingress.global-static-ip-name: shuhei-ip-address` with `kubernetes.io/ingress.global-static-ip-name: ${ENV}-ip-address`.
 
-- `image: us-central1-docker.pkg.dev/tribal-iridium-308123/shuhei-repository/java-app-on-gke-with-datadog:latest` を `image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on-gke-with-datadog:latest` に置き換えてください。
-- `- "tribal-iridium-308123:us-central1:shuhei-cloud-sql"` を `- "${PROJECT_ID}:${REGION}:${ENV}-cloud-sql"` に置き換えてください。
-- `kubernetes.io/ingress.global-static-ip-name: shuhei-ip-address` を `kubernetes.io/ingress.global-static-ip-name: ${ENV}-ip-address` に置き換えてください。
+### Deploy Kubernetes Resources
 
-### Kubernetes リソースのデプロイ
+Replace ${API-KEY} in the commands below with your Datadog API key.
 
-以下コマンドの `${API-KEY}` を Datadog の API キーに置き換えてください。
-
-`k8s` ディレクトリで以下のコマンドを実行してください。
+Run the following commands from the k8s directory:
 
 ```bash
 gcloud container clusters get-credentials --zone ${REGION} ${ENV}-gke
@@ -141,11 +176,9 @@ kubectl annotate serviceaccount ksa-cloud-sql iam.gke.io/gcp-service-account=${E
 kubectl apply -f manifests.yaml
 ```
 
-### HTTP リクエストの送信
+### Send an HTTP Request (Google Cloud)
 
-リクエスト送信先のグローバル IP アドレスを確認するために、`kubectl get service app` コマンドを実行してください。
-
-実行結果の例は、以下のとおりです。
+Run kubectl get service app to find the external IP address:
 
 ```bash
 shuhei.ogura@COMP-R7QQCTJ177 k8s % kubectl get service app
@@ -153,15 +186,15 @@ NAME   TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)          AGE
 app    LoadBalancer   10.187.247.149   35.238.101.70   8080:31303/TCP   38h
 ```
 
-以下コマンドの `${EXTERNAL-IP}` を上記の `EXTERNAL-IP` に置き換えたうえで、以下コマンドを実行してください。
+Replace ${EXTERNAL-IP} with the EXTERNAL-IP value shown above, then run:
 
 ```bash
 curl -v -X POST -H 'Content-Type:application/json' -d '{"message":"Hello", "target":"Kagetaka"}' ${EXTERNAL-IP}:8080/greeting
 ```
 
-### Kubernetes リソースの削除
+### Delete Kubernetes Resources
 
-`k8s` ディレクトリで以下のコマンドを実行してください。
+Run the following commands from the k8s directory:
 
 ```bash
 kubectl delete -f manifests.yaml -f service-account.yaml
@@ -171,36 +204,37 @@ kubectl delete datadogagent datadog
 helm delete datadog-operator
 ```
 
-### Google Cloud リソースの削除
+### Delete Google Cloud Resources
 
-`terraform` ディレクトリで以下のコマンドを実行してください。
+Run the following command from the terraform directory:
 
 ```bash
 terraform destroy
 ```
 
-## ビルドと実行 （ ローカル ）
+---
+## Build and Run (Local)
 
-### 前提条件
+### Prerequisites (Local)
 
-- こちらの[ドキュメント](https://docs.docker.com/engine/install/)を参考に Docker をインストールしてください。
-- ローカル用の Datadog Agent コンテナは、Mac OS のみで正しく動作する想定です。
+- Install Docker by following the official documentation (https://docs.docker.com/engine/install/).
+- The local Datadog Agent container is designed to run correctly on macOS only.
 
-### 事前作業
+### Pre-work (Local)
 
-`.env` ファイルの `DD_API_KEY` に Datadog の API キーを設定してください。
+Set your Datadog API key as the value of DD_API_KEY in the .env file.
 
-### コンテナの起動
+### Start Containers
 
-`compose.yaml` が存在するディレクトリで以下のコマンドを実行してください。
+Run the following command from the directory containing compose.yaml:
 
 ```bash
 docker compose up -d --build
 ```
 
-### HTTP リクエストの送信
+### Send an HTTP Request (Local)
 
-アプリケーションコンテナに HTTP リクエストを送信するには、以下のコマンドを実行してください。
+To send an HTTP request to the application container:
 
 ```bash
 curl -v -X POST -H 'Content-Type:application/json' -d '{"message":"Hello", "target":"Kagetaka"}' 127.0.0.1:8080/greeting
@@ -208,23 +242,24 @@ curl -v -X POST -H 'Content-Type:application/json' -d '{"message":"Hello", "targ
 
 ### Jenkins
 
-Jenkins にアクセスするための URL は、http://localhost:8888 です。
+Jenkins is accessible at http://localhost:8888.
 
-Jenkins にアクセスするためのユーザー名とパスワードは、Jenkins コンテナ起動時のログに出力されます。
+The username and password are printed to the Jenkins container logs on first startup.
 
-### コンテナの停止
+### Stop Containers
 
-`compose.yaml` が存在するディレクトリで以下のコマンドを実行してください。
+Run the following command from the directory containing compose.yaml:
 
 ```bash
 docker compose down
 ```
 
+---
 ## References
 
 - [Spring Initializr](https://start.spring.io/)
-- [Provision a GKE cluster (Google Cloud)](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)
-- [Google Kubernetes Engine から Cloud SQL に接続する](https://cloud.google.com/sql/docs/mysql/connect-kubernetes-engine?hl=ja)
-- [基本的な本番環境クラスタ用にネットワークを構成する](https://cloud.google.com/kubernetes-engine/docs/tutorials/configure-networking?hl=ja)
-- [Google Cloud リソース別の Terraform 公式ページ](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [Cloud SQL で高可用性を有効または無効にする](https://cloud.google.com/sql/docs/postgres/configure-ha?hl=ja#terraform)
+- [Provision a GKE Cluster (Google Cloud) — Terraform Tutorial](https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke)
+- [Connecting to Cloud SQL from Google Kubernetes Engine](https://cloud.google.com/sql/docs/mysql/connect-kubernetes-engine?hl=ja)
+- [Configure Networking for a Basic Production Cluster](https://cloud.google.com/kubernetes-engine/docs/tutorials/configure-networking?hl=ja)
+- [Terraform Registry — Google Cloud Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
+- [Enable or Disable High Availability for Cloud SQL](https://cloud.google.com/sql/docs/postgres/configure-ha?hl=ja#terraform)
