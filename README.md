@@ -217,7 +217,7 @@ terraform destroy
 
 ### Prerequisites (Local)
 
-- Install Docker by following the official documentation (https://docs.docker.com/engine/install/).
+- Install Docker by following the [official documentation](https://docs.docker.com/engine/install/).
 - The local Datadog Agent container is designed to run correctly on macOS only.
 
 ### Pre-work (Local)
