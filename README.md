@@ -151,7 +151,7 @@ docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on
 Update `k8s/manifests.yaml` as follows. Lines that require changes are marked with a `# REPLACE ME` comment.
 
 - Replace `image: us-central1-docker.pkg.dev/tribal-iridium-308123/shuhei-repository/java-app-on-gke-with-datadog:latest` with `image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on-gke-with-datadog:latest`.
-- Replace - `tribal-iridium-308123:us-central1:shuhei-cloud-sql` with - `${PROJECT_ID}:${REGION}:${ENV}-cloud-sql`.
+- Replace `- tribal-iridium-308123:us-central1:shuhei-cloud-sql` with `- ${PROJECT_ID}:${REGION}:${ENV}-cloud-sql`.
 - Replace `kubernetes.io/ingress.global-static-ip-name: shuhei-ip-address` with `kubernetes.io/ingress.global-static-ip-name: ${ENV}-ip-address`.
 
 ### Deploy Kubernetes Resources
