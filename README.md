@@ -178,7 +178,7 @@ kubectl apply -f manifests.yaml
 
 ### Send an HTTP Request (Google Cloud)
 
-Run kubectl get service app to find the external IP address:
+Run `kubectl get service app` to find the external IP address:
 
 ```bash
 shuhei.ogura@COMP-R7QQCTJ177 k8s % kubectl get service app
