@@ -116,7 +116,7 @@ gcloud services enable sqladmin.googleapis.com
 
 ### Create Google Cloud Resources
 
-Run the following commands from the terraform directory:
+Run the following commands from the `terraform` directory:
 
 ```bash
 terraform init
@@ -128,15 +128,15 @@ terraform apply
 
 Replace the placeholder variables in the commands and files below:
 
-- Replace ${PROJECT_ID} with the value of project_id in terraform/terraform.tfvars.
-- Replace ${REGION} with the value of region in terraform/terraform.tfvars.
-- Replace ${ENV} with the value of env in terraform/terraform.tfvars.
+- Replace `${PROJECT_ID}` with the value of `project_id` in `terraform/terraform.tfvars`.
+- Replace `${REGION}` with the value of `region` in `terraform/terraform.tfvars`.
+- Replace `${ENV}` with the value of `env` in `terraform/terraform.tfvars`.
 
-For example commands with these values substituted, see example-command.sh.
+For example commands with these values substituted, see `example-command.sh`.
 
 ### Build and Push the Application Container Image
 
-Run the following commands from the directory containing the Dockerfile:
+Run the following commands from the directory containing the `Dockerfile`:
 
 ```bash
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
@@ -146,9 +146,9 @@ docker buildx build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repositor
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on-gke-with-datadog:latest
 ```
 
-### Edit k8s/manifests.yaml
+### Edit `k8s/manifests.yaml`
 
-Update k8s/manifests.yaml as follows. Lines that require changes are marked with a # REPLACE ME comment.
+Update `k8s/manifests.yaml` as follows. Lines that require changes are marked with a `# REPLACE ME` comment.
 
 - Replace `image: us-central1-docker.pkg.dev/tribal-iridium-308123/shuhei-repository/java-app-on-gke-with-datadog:latest` with `image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ENV}-repository/java-app-on-gke-with-datadog:latest`.
 - Replace - `tribal-iridium-308123:us-central1:shuhei-cloud-sql` with - `${PROJECT_ID}:${REGION}:${ENV}-cloud-sql`.
@@ -156,9 +156,9 @@ Update k8s/manifests.yaml as follows. Lines that require changes are marked with
 
 ### Deploy Kubernetes Resources
 
-Replace ${API-KEY} in the commands below with your Datadog API key.
+Replace `${API-KEY}` in the commands below with your Datadog API key.
 
-Run the following commands from the k8s directory:
+Run the following commands from the `k8s` directory:
 
 ```bash
 gcloud container clusters get-credentials --zone ${REGION} ${ENV}-gke
@@ -186,7 +186,7 @@ NAME   TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)          AGE
 app    LoadBalancer   10.187.247.149   35.238.101.70   8080:31303/TCP   38h
 ```
 
-Replace ${EXTERNAL-IP} with the EXTERNAL-IP value shown above, then run:
+Replace `${EXTERNAL-IP}` with the `EXTERNAL-IP` value shown above, then run:
 
 ```bash
 curl -v -X POST -H 'Content-Type:application/json' -d '{"message":"Hello", "target":"Kagetaka"}' ${EXTERNAL-IP}:8080/greeting
@@ -194,7 +194,7 @@ curl -v -X POST -H 'Content-Type:application/json' -d '{"message":"Hello", "targ
 
 ### Delete Kubernetes Resources
 
-Run the following commands from the k8s directory:
+Run the following commands from the `k8s` directory:
 
 ```bash
 kubectl delete -f manifests.yaml -f service-account.yaml
@@ -206,7 +206,7 @@ helm delete datadog-operator
 
 ### Delete Google Cloud Resources
 
-Run the following command from the terraform directory:
+Run the following command from the `terraform` directory:
 
 ```bash
 terraform destroy
@@ -222,11 +222,11 @@ terraform destroy
 
 ### Pre-work (Local)
 
-Set your Datadog API key as the value of DD_API_KEY in the .env file.
+Set your Datadog API key as the value of `DD_API_KEY` in the `.env` file.
 
 ### Start Containers
 
-Run the following command from the directory containing compose.yaml:
+Run the following command from the directory containing `compose.yaml`:
 
 ```bash
 docker compose up -d --build
@@ -248,7 +248,7 @@ The username and password are printed to the Jenkins container logs on first sta
 
 ### Stop Containers
 
-Run the following command from the directory containing compose.yaml:
+Run the following command from the directory containing `compose.yaml`:
 
 ```bash
 docker compose down
